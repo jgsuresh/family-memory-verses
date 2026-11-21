@@ -13,6 +13,8 @@
     session: null, loaded: false, authError: "", sync: ""
   };
   var queue = [], flushing = false, dirty = false, toastTimer, pullTimer;
+  // Invite and password-reset emails land here with a token in the URL; ask for a new password.
+  state.settingPw = /type=(recovery|invite)/.test(location.hash);
 
   // ---------- tiny helpers ----------
   function $(id) { return document.getElementById(id); }
@@ -370,12 +372,32 @@
     var email = h("input", { id: "em", type: "email", required: "", autocomplete: "username", placeholder: "Email" });
     var pw = h("input", { id: "pw", type: "password", required: "", autocomplete: "current-password", placeholder: "Password" });
     var err = h("div", { class: "err", role: "alert", text: state.authError });
+    var forgot = h("button", { class: "link", type: "button", text: "First time, or forgot your password? Email me a link", onclick: async function () {
+      var em = email.value.trim();
+      if (!em) { err.textContent = "Type your email above first."; return; }
+      var r = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
+      err.textContent = r.error ? "Couldn't send that email. Wait a minute and try again." : "Check your email for a link to set your password.";
+    } });
     var form = h("form", { class: "login", onsubmit: async function (e) {
       e.preventDefault();
       var r = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pw.value });
       if (r.error) { state.authError = "That email and password didn't work."; render(); }
-    } }, h("h1", { text: "Family Memory Verses" }), email, pw, err, h("button", { class: "btn", type: "submit", text: "Sign in" }));
+    } }, h("h1", { text: "Family Memory Verses" }), email, pw, err, h("button", { class: "btn", type: "submit", text: "Sign in" }), forgot);
     root.appendChild(form);
+  }
+
+  function renderSetPassword(root) {
+    var pw = h("input", { id: "np", type: "password", required: "", minlength: "8", autocomplete: "new-password", placeholder: "New password (8+ characters)" });
+    var err = h("div", { class: "err", role: "alert" });
+    root.appendChild(h("form", { class: "login", onsubmit: async function (e) {
+      e.preventDefault();
+      var r = await sb.auth.updateUser({ password: pw.value });
+      if (r.error) { err.textContent = r.error.message; return; }
+      state.settingPw = false;
+      try { history.replaceState(null, "", location.pathname); } catch (x) {}
+      toast("Password saved. You're in."); render();
+    } }, h("h1", { text: "Choose a password" }), h("p", { class: "note", text: "You'll use it with your email to sign in on this phone." }), pw, err,
+      h("button", { class: "btn", type: "submit", text: "Save password" })));
   }
 
   function renderNav() {
@@ -398,6 +420,7 @@
     dirty = false;
     var root = $("app"); root.textContent = "";
     if (sb && !state.user) { renderLogin(root); renderNav(); return; }
+    if (sb && state.settingPw) { renderSetPassword(root); renderNav(); return; }
     var top = h("div", { class: "top" }, h("h1", { text: "Family Memory Verses" }), h("span", { class: "sync", id: "sync", text: state.sync }));
     root.appendChild(top);
     if (state.view === "review") renderReview(root); else renderLearn(root);
@@ -439,6 +462,7 @@
     if (s.data.session) await startSignedIn({ id: s.data.session.user.id, email: s.data.session.user.email });
     else render();
     sb.auth.onAuthStateChange(function (ev, session) {
+      if (ev === "PASSWORD_RECOVERY") { state.settingPw = true; render(); }
       if (ev === "SIGNED_IN" && session && (!state.user || state.user.id !== session.user.id)) { state.authError = ""; startSignedIn({ id: session.user.id, email: session.user.email }); }
       if (ev === "SIGNED_OUT") { state.user = null; state.lists = []; state.verses = []; state.reviews = []; jset(KEY_CACHE, null); render(); }
     });
