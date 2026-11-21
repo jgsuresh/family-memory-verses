@@ -3,7 +3,7 @@
 create table if not exists allowed_users (email text primary key);
 insert into allowed_users (email) values
   ('joshua.suresh@gmail.com'),
-  ('WIFE_EMAIL_HERE')
+  ('grace.renee87@gmail.com')
 on conflict do nothing;
 
 create table if not exists lists (
@@ -43,6 +43,10 @@ create or replace function is_member() returns boolean
 language sql security definer set search_path = public stable as $$
   select exists (select 1 from allowed_users where lower(email) = lower(auth.jwt() ->> 'email'));
 $$;
+
+-- Newer projects don't expose new tables to the API automatically.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on lists, verses, reviews to authenticated;
 
 alter table allowed_users enable row level security;   -- no policies: nobody can read it directly
 alter table lists   enable row level security;

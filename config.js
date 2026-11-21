@@ -1,7 +1,7 @@
-// Fill these in after creating the Supabase project (see README.md).
+// Supabase connection. The publishable key is meant to be public; the database rules in
+// schema.sql (only the two allowed emails, and each person's own review rows) are what protect the data.
 // Leave both empty to run in local-only mode (data stays on this device).
-// The anon key is meant to be public; the database rules (schema.sql) are what protect the data.
 window.APP_CONFIG = {
-  SUPABASE_URL: "",
-  SUPABASE_ANON_KEY: ""
+  SUPABASE_URL: "https://jxvklhndrobcxiigwkko.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_FvU8WPC06PnyCPAKvcljWw_x-oTPZhk"
 };
