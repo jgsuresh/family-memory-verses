@@ -376,7 +376,7 @@
       var em = email.value.trim();
       if (!em) { err.textContent = "Type your email above first."; return; }
       var r = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.origin + location.pathname });
-      err.textContent = r.error ? "Couldn't send that email. Wait a minute and try again." : "Check your email for a link to set your password.";
+      err.textContent = r.error ? "Couldn't send that email: " + (r.error.message || r.error.code || "unknown error") : "Check your email (and spam) for a link to set your password.";
     } });
     var form = h("form", { class: "login", onsubmit: async function (e) {
       e.preventDefault();
