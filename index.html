@@ -74,15 +74,11 @@ nav.bottom .count { background: var(--c2); color: #fff; border-radius: 999px; pa
 .bar .d { background: var(--green); } .bar .l { background: var(--honey); }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: .85rem; margin-top: 6px; }
 .legend b { color: var(--ink); }
-.goalcard { background: var(--surface); border: 2px solid var(--line); border-radius: 16px; padding: 14px 16px; margin: 14px 0; }
-.goalcard.met { border-color: var(--green); background: var(--green-soft); }
-.goalcard .label { font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
-.goalcard .big { font-family: var(--font-display); font-size: 1.15rem; margin: 2px 0 8px; }
-.goalcard .big b { font-size: 1.6rem; }
-.goalcard .note { margin: 8px 0 0; font-size: .9rem; color: var(--muted); }
+.goalmini { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: .75rem; color: var(--muted); opacity: .85; }
+.goalmini .bar { height: 6px; border-width: 1px; flex: 0 1 110px; }
+.goalmini .n { font-variant-numeric: tabular-nums; }
+.goalmini.met { color: var(--green); opacity: 1; }
 .bar.goal .a { background: var(--c1); } .bar.goal .b { background: var(--c2); }
-.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
-.dot.a { background: var(--c1); } .dot.b { background: var(--c2); }
 
 .now {
   background: var(--honey-soft); color: var(--honey-ink); border-radius: 22px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;

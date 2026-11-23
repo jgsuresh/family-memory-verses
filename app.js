@@ -212,17 +212,12 @@
   function goalCard() {
     var t = weekTotals(), total = t.mine + t.other, met = total >= WEEKLY_GOAL;
     var pct = function (n) { return Math.min(100, n / WEEKLY_GOAL * 100); };
-    var mineW = Math.min(pct(t.mine), 100), otherW = Math.min(pct(t.other), 100 - mineW);
-    var bar = h("div", { class: "bar goal", role: "img", "aria-label": total + " of " + WEEKLY_GOAL + " this week" },
-      h("i", { class: "a", style: "width:" + mineW + "%" }), h("i", { class: "b", style: "width:" + otherW + "%" }));
-    var c = h("div", { class: "goalcard" + (met ? " met" : "") },
-      h("div", { class: "label", text: "Our week together" }),
-      h("div", { class: "big" }, h("b", { text: String(total) }), " of " + WEEKLY_GOAL + " reviews & verses"),
-      bar,
-      h("div", { class: "legend" },
-        h("span", null, h("i", { class: "dot a" }), h("b", { text: String(t.mine) }), " you"),
-        h("span", null, h("i", { class: "dot b" }), h("b", { text: String(t.other) }), " " + t.otherName.toLowerCase())));
-    c.appendChild(h("p", { class: "note", text: met ? "Goal reached! Nice work, team 🎉" : (WEEKLY_GOAL - total) + " to go. Reviews and newly memorized verses both count. Resets Monday." }));
+    var mineW = pct(t.mine), otherW = Math.min(pct(t.other), 100 - mineW);
+    var tip = "Our week: " + t.mine + " you, " + t.other + " " + t.otherName.toLowerCase() + ". Reviews and newly memorized verses count. Resets Monday.";
+    var c = h("div", { class: "goalmini" + (met ? " met" : ""), title: tip, "aria-label": tip },
+      h("span", { text: met ? "Our week 🎉" : "Our week" }),
+      h("div", { class: "bar goal" }, h("i", { class: "a", style: "width:" + mineW + "%" }), h("i", { class: "b", style: "width:" + otherW + "%" })),
+      h("span", { class: "n", text: total + "/" + WEEKLY_GOAL }));
     return c;
   }
 
