@@ -74,11 +74,18 @@ nav.bottom .count { background: var(--c2); color: #fff; border-radius: 999px; pa
 .bar .d { background: var(--green); } .bar .l { background: var(--honey); }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: .85rem; margin-top: 6px; }
 .legend b { color: var(--ink); }
-.goalmini { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: .75rem; color: var(--muted); opacity: .85; }
-.goalmini .bar { height: 6px; border-width: 1px; flex: 0 1 110px; }
+.goalmini { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0 0; font-size: .75rem; color: var(--muted); }
+.goalmini .lanes { display: grid; gap: 4px; }
+.goalmini .lane { display: flex; align-items: center; gap: 8px; }
+.goalmini .nm { width: 4.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.goalmini .dots { display: flex; gap: 6px; }
+.goalmini .dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--line); box-sizing: border-box; }
+.goalmini .dot.a.on { background: var(--c1); border-color: var(--c1); }
+.goalmini .dot.b.on { background: var(--c2); border-color: var(--c2); }
+.goalmini .dot.future { opacity: .45; }
+.goalmini .dot.today { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--muted); }
 .goalmini .n { font-variant-numeric: tabular-nums; }
-.goalmini.met { color: var(--green); opacity: 1; }
-.bar.goal .a { background: var(--c1); } .bar.goal .b { background: var(--c2); }
+.goalmini.met .n { color: var(--green); font-weight: 700; }
 
 .now {
   background: var(--honey-soft); color: var(--honey-ink); border-radius: 22px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;

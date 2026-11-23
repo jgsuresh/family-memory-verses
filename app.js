@@ -211,14 +211,26 @@
 
   function goalCard() {
     var t = weekTotals(), total = t.mine + t.other, met = total >= WEEKLY_GOAL;
-    var pct = function (n) { return Math.min(100, n / WEEKLY_GOAL * 100); };
-    var mineW = pct(t.mine), otherW = Math.min(pct(t.other), 100 - mineW);
-    var tip = "Our week: " + t.mine + " you, " + t.other + " " + t.otherName.toLowerCase() + ". Reviews and newly memorized verses count. Resets Monday.";
-    var c = h("div", { class: "goalmini" + (met ? " met" : ""), title: tip, "aria-label": tip },
-      h("span", { text: met ? "Our week 🎉" : "Our week" }),
-      h("div", { class: "bar goal" }, h("i", { class: "a", style: "width:" + mineW + "%" }), h("i", { class: "b", style: "width:" + otherW + "%" })),
-      h("span", { class: "n", text: total + "/" + WEEKLY_GOAL }));
-    return c;
+    var ws = weekStart(), today = ymd(new Date()), days = [];
+    var d0 = new Date(); d0.setDate(d0.getDate() - ((d0.getDay() + 6) % 7));
+    for (var i = 0; i < 7; i++) { var d = new Date(d0); d.setDate(d0.getDate() + i); days.push(ymd(d)); }
+    function lane(name, cls, isMine) {
+      var done = {};
+      state.activity.forEach(function (a) {
+        if (a.day < ws || (a.user_id === state.user.id) !== isMine) return;
+        if (a.count > 0) done[a.day] = a.count;
+      });
+      var dots = h("span", { class: "dots" });
+      days.forEach(function (day) {
+        var c = "dot " + cls + (done[day] ? " on" : "") + (day === today ? " today" : "") + (day > today ? " future" : "");
+        dots.appendChild(h("i", { class: c }));
+      });
+      return h("div", { class: "lane" }, h("span", { class: "nm", text: name }), dots);
+    }
+    var tip = "Our week (Mon–Sun): a filled dot means that person practiced that day. " + total + " of " + WEEKLY_GOAL + " together.";
+    return h("div", { class: "goalmini" + (met ? " met" : ""), title: tip, "aria-label": tip },
+      h("div", { class: "lanes" }, lane("You", "a", true), lane(t.otherName, "b", false)),
+      h("span", { class: "n", text: (met ? "🎉 " : "") + total + "/" + WEEKLY_GOAL }));
   }
 
   function renderLearn(root) {
