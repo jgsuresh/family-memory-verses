@@ -61,3 +61,18 @@ create policy "own reviews" on reviews for all
 
 -- Live updates between your two phones.
 alter publication supabase_realtime add table lists, verses;
+
+-- Shared weekly goal: one row per person per day, readable by both, writable only by yourself.
+create table if not exists activity (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  day date not null,
+  who text not null default '',
+  count int not null default 0,
+  primary key (user_id, day)
+);
+grant select, insert, update, delete on activity to authenticated;
+alter table activity enable row level security;
+create policy "members read activity" on activity for select using (is_member());
+create policy "write own activity" on activity for insert with check (is_member() and user_id = auth.uid());
+create policy "update own activity" on activity for update using (is_member() and user_id = auth.uid()) with check (is_member() and user_id = auth.uid());
+alter publication supabase_realtime add table activity;

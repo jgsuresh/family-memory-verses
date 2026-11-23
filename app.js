@@ -8,7 +8,7 @@
   var KEY_CACHE = "mv2-cache", KEY_QUEUE = "mv2-queue", KEY_UI = "mv2-ui";
 
   var state = {
-    user: null, lists: [], verses: [], reviews: [],
+    user: null, lists: [], verses: [], reviews: [], activity: [],
     view: "learn", list: "boys", filter: "all", reveal: {}, renaming: false,
     session: null, loaded: false, authError: "", sync: ""
   };
@@ -49,7 +49,7 @@
   function verseRow(v) { var r = {}; VERSE_COLS.forEach(function (c) { r[c] = v[c]; }); return r; }
   function listRow(l) { return { id: l.id, name: l.name, ord: l.ord, current_verse: l.current_verse || null }; }
 
-  function persist() { jset(KEY_CACHE, { lists: state.lists, verses: state.verses, reviews: state.reviews, uid: state.user && state.user.id }); }
+  function persist() { jset(KEY_CACHE, { lists: state.lists, verses: state.verses, reviews: state.reviews, activity: state.activity, uid: state.user && state.user.id }); }
   function saveQueue() { jset(KEY_QUEUE, queue); }
 
   function enqueue(op) {
@@ -88,11 +88,33 @@
 
   async function pull() {
     if (!sb || !state.user || queue.length) return;
-    var r = await Promise.all([sb.from("lists").select("*"), sb.from("verses").select("*"), sb.from("reviews").select("*")]);
+    var r = await Promise.all([sb.from("lists").select("*"), sb.from("verses").select("*"), sb.from("reviews").select("*"),
+      sb.from("activity").select("*").gte("day", weekStart())]);
     if (r[0].error || r[1].error || r[2].error) { setSync(); return; }
+    if (!r[3].error) state.activity = r[3].data;      // goal bar just stays empty if this table isn't set up yet
     state.lists = r[0].data; state.verses = r[1].data.map(function (v) { v.ord = Number(v.ord); return v; }); state.reviews = r[2].data;
     if (!state.lists.length && !state.verses.length) seed();
     ensureReviews(); persist(); state.loaded = true; setSync(); render();
+  }
+  // ---------- shared weekly goal ----------
+  var WEEKLY_GOAL = 10;   // reviews + newly memorized verses, both of you combined
+  function ymd(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function weekStart() { var d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return ymd(d); }   // Monday
+  function myName() { var w = ((state.user && state.user.email) || "").split("@")[0].split(/[._\d]+/)[0] || "You"; return w.charAt(0).toUpperCase() + w.slice(1); }
+  function logActivity() {
+    if (!state.user) return;
+    var day = ymd(new Date()), row = state.activity.filter(function (a) { return a.user_id === state.user.id && a.day === day; })[0];
+    if (!row) { row = { user_id: state.user.id, day: day, who: myName(), count: 0 }; state.activity.push(row); }
+    row.count += 1; row.who = myName();
+    up("activity", { user_id: row.user_id, day: row.day, who: row.who, count: row.count });
+  }
+  function weekTotals() {
+    var ws = weekStart(), mine = 0, other = 0, otherName = "";
+    state.activity.forEach(function (a) {
+      if (a.day < ws) return;
+      if (state.user && a.user_id === state.user.id) mine += a.count; else { other += a.count; otherName = a.who || otherName; }
+    });
+    return { mine: mine, other: other, otherName: otherName || "Your partner" };
   }
   function schedulePull() { clearTimeout(pullTimer); pullTimer = setTimeout(pull, 400); }
 
@@ -134,7 +156,7 @@
     if (v.status === s) return;
     v.status = s; v.updated_at = nowIso();
     up("verses", verseRow(v));
-    if (s === "done") ensureReviews();
+    if (s === "done") { ensureReviews(); logActivity(); }
     persist(); render();
   }
   function setCurrent(l, id) { l.current_verse = id; up("lists", listRow(l)); persist(); render(); }
@@ -155,7 +177,7 @@
   function gradeCard(vid, g) {
     var r = reviewOf(vid); if (!r) return;
     var n = SRS.nextState(r, g, Date.now());
-    Object.assign(r, n); up("reviews", r); persist();
+    Object.assign(r, n); up("reviews", r); logActivity(); persist();
     var s = state.session;
     s.done += 1;
     s.queue.shift();
@@ -185,6 +207,23 @@
         onclick: function () { setStatus(v, s[0]); } }));
     });
     return seg;
+  }
+
+  function goalCard() {
+    var t = weekTotals(), total = t.mine + t.other, met = total >= WEEKLY_GOAL;
+    var pct = function (n) { return Math.min(100, n / WEEKLY_GOAL * 100); };
+    var mineW = Math.min(pct(t.mine), 100), otherW = Math.min(pct(t.other), 100 - mineW);
+    var bar = h("div", { class: "bar goal", role: "img", "aria-label": total + " of " + WEEKLY_GOAL + " this week" },
+      h("i", { class: "a", style: "width:" + mineW + "%" }), h("i", { class: "b", style: "width:" + otherW + "%" }));
+    var c = h("div", { class: "goalcard" + (met ? " met" : "") },
+      h("div", { class: "label", text: "Our week together" }),
+      h("div", { class: "big" }, h("b", { text: String(total) }), " of " + WEEKLY_GOAL + " reviews & verses"),
+      bar,
+      h("div", { class: "legend" },
+        h("span", null, h("i", { class: "dot a" }), h("b", { text: String(t.mine) }), " you"),
+        h("span", null, h("i", { class: "dot b" }), h("b", { text: String(t.other) }), " " + t.otherName.toLowerCase())));
+    c.appendChild(h("p", { class: "note", text: met ? "Goal reached! Nice work, team 🎉" : (WEEKLY_GOAL - total) + " to go. Reviews and newly memorized verses both count. Resets Monday." }));
+    return c;
   }
 
   function renderLearn(root) {
@@ -228,6 +267,8 @@
       lg.appendChild(h("span", null, h("b", { text: String(x[0]) }), x[1]));
     });
     pr.appendChild(bar); pr.appendChild(lg); root.appendChild(pr);
+
+    if (l.id === "parents") root.appendChild(goalCard());
 
     var cur = vs.filter(function (v) { return v.id === l.current_verse; })[0];
     if (cur) {
@@ -436,14 +477,15 @@
   async function startSignedIn(user) {
     state.user = user;
     var c = jget(KEY_CACHE, null);
-    if (c && c.uid === user.id) { state.lists = c.lists; state.verses = c.verses; state.reviews = c.reviews; state.loaded = true; }
+    if (c && c.uid === user.id) { state.lists = c.lists; state.verses = c.verses; state.reviews = c.reviews; state.activity = c.activity || []; state.loaded = true; }
     queue = jget(KEY_QUEUE, []);
     var ui = jget(KEY_UI, {}); if (ui.list) state.list = ui.list;
     setSync(); render();
     if (sb) {
       await flush(); await pull();
       sb.channel("shared").on("postgres_changes", { event: "*", schema: "public", table: "verses" }, schedulePull)
-        .on("postgres_changes", { event: "*", schema: "public", table: "lists" }, schedulePull).subscribe();
+        .on("postgres_changes", { event: "*", schema: "public", table: "lists" }, schedulePull)
+        .on("postgres_changes", { event: "*", schema: "public", table: "activity" }, schedulePull).subscribe();
     }
   }
 
@@ -453,7 +495,7 @@
       state.user = { id: "local", email: "this device" };
       queue = [];
       var ui = jget(KEY_UI, {}); if (ui.list) state.list = ui.list;
-      if (c && c.verses && c.verses.length) { state.lists = c.lists; state.verses = c.verses; state.reviews = c.reviews; }
+      if (c && c.verses && c.verses.length) { state.lists = c.lists; state.verses = c.verses; state.reviews = c.reviews; state.activity = c.activity || []; }
       else { seed(); }
       ensureReviews(); persist(); state.loaded = true; setSync(); render();
       return;
@@ -464,7 +506,7 @@
     sb.auth.onAuthStateChange(function (ev, session) {
       if (ev === "PASSWORD_RECOVERY") { state.settingPw = true; render(); }
       if (ev === "SIGNED_IN" && session && (!state.user || state.user.id !== session.user.id)) { state.authError = ""; startSignedIn({ id: session.user.id, email: session.user.email }); }
-      if (ev === "SIGNED_OUT") { state.user = null; state.lists = []; state.verses = []; state.reviews = []; jset(KEY_CACHE, null); render(); }
+      if (ev === "SIGNED_OUT") { state.user = null; state.lists = []; state.verses = []; state.reviews = []; state.activity = []; jset(KEY_CACHE, null); render(); }
     });
   }
 
