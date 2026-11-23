@@ -42,17 +42,6 @@
   }
   function byOrd(a, b) { return a.ord - b.ord; }
   function nowIso() { return new Date().toISOString(); }
-  // Same layout as the full verse: first letter of each word shows, the rest is invisible but still takes up space.
-  function fillHint(p, text) {
-    var re = /([A-Za-z0-9])([A-Za-z0-9’'\-]*)/g, last = 0, m;
-    while ((m = re.exec(text))) {
-      if (m.index > last) p.appendChild(document.createTextNode(text.slice(last, m.index)));
-      p.appendChild(document.createTextNode(m[1]));
-      if (m[2]) p.appendChild(h("span", { class: "ghost-l", "aria-hidden": "true", text: m[2] }));
-      last = re.lastIndex;
-    }
-    if (last < text.length) p.appendChild(document.createTextNode(text.slice(last)));
-  }
   function hintOf(text) { return text.replace(/([A-Za-z0-9])[A-Za-z0-9’'\-]*/g, "$1"); }
 
   // ---------- data layer ----------
@@ -180,7 +169,7 @@
     var mode = state.reveal[key] || "hidden";
     var p = h("p", { class: cls });
     if (mode === "full") p.textContent = v.body;
-    else if (mode === "hint") { fillHint(p, v.body); p.className += " hint"; }
+    else if (mode === "hint") { p.textContent = hintOf(v.body); p.className += " hint"; }
     else { p.textContent = "Verse hidden. Say it from memory, then peek if you need to."; p.className += " hidden-v"; }
     var seg = h("div", { class: "seg", role: "group", "aria-label": "How much of " + v.ref + " to show" });
     [["hidden", "Hide"], ["hint", "Hint"], ["full", "Show"]].forEach(function (m) {
@@ -328,7 +317,7 @@
           h("button", { class: "btn ghost", type: "button", text: "Hint", onclick: function () { s.mode = "hint"; render(); } }),
           h("button", { class: "btn", type: "button", text: "Show verse", onclick: function () { s.mode = "full"; render(); } })));
       } else if (s.mode === "hint") {
-        var hp = h("p", { class: "txt hint" }); fillHint(hp, v.body); card.appendChild(hp);
+        card.appendChild(h("p", { class: "txt hint", style: "letter-spacing:.14em;word-spacing:.4em", text: hintOf(v.body) }));
         card.appendChild(h("div", { class: "row" }, h("button", { class: "btn", type: "button", text: "Show verse", onclick: function () { s.mode = "full"; render(); } })));
       } else {
         card.appendChild(h("p", { class: "txt", text: v.body }));
